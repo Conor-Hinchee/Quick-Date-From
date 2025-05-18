@@ -1,42 +1,80 @@
-import { Plugin, MarkdownView } from 'obsidian';
+import { Plugin, Editor, MarkdownView, Notice } from 'obsidian';
 
-export default class QuickTimestamper extends Plugin {
+export default class QuickDateFrom extends Plugin {
     onload() {
-        this.registerMarkdownCodeBlockProcessor("quick-timestamp-button", (source, el, ctx) => {
-            const container = el.createEl("div");
-            const button = container.createEl("button", { text: "🪵 Time" });
+        console.log('QuickDateFrom plugin loaded');
 
-            button.addEventListener("click", async () => {
-                console.log("DEBUG ENABLED: QuickTimestamper clicked");
-                try {
-                    const now = new Date();
-                    const hours = String(now.getHours()).padStart(2, '0');
-                    const minutes = String(now.getMinutes()).padStart(2, '0');
-                    const seconds = String(now.getSeconds()).padStart(2, '0');
-    
-                    const timestamp = `🪵 Logged at: ${hours}:${minutes}:${seconds}`;
-                    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-                    const sectionInfo = ctx.getSectionInfo(el);
-                    if (!view || !view.editor || !view.file) {
-                        throw new Error("Markdown view or editor not found.");
+        this.addCommand({
+            id: 'add-day-number-to-sprouted',
+            name: 'Add Day Number to Sprouted Date',
+            editorCallback: (editor: Editor, view: MarkdownView) => {
+                const content = editor.getValue();
+                let changesMade = false;
+
+                const sproutedRegex = /(Sprouted: (\d{1,2}\/\d{1,2}\/\d{2}))(?! Day#\d+)/g;
+                let match;
+
+                const currentDate = new Date(2025, 4, 18);
+
+                let lastIndex = 0;
+                const parts = [];
+
+                while ((match = sproutedRegex.exec(content)) !== null) {
+                    const fullMatch = match[0];
+                    const dateString = match[2];
+
+                    const dateParts = dateString.split('/');
+                    if (dateParts.length !== 3 || dateParts[2].length !== 2) {
+                        new Notice(`Skipping non-M/D/YY date format: ${dateString} in "${fullMatch}"`);
+                        continue;
                     }
 
-                    if (!sectionInfo) {
-                        throw new Error("Section info not found.");
+                    const month = parseInt(dateParts[0], 10) - 1;
+                    const day = parseInt(dateParts[1], 10);
+                    const year = parseInt(dateParts[2], 10) + 2000;
+
+                    const sproutedDate = new Date(year, month, day);
+
+                    if (isNaN(sproutedDate.getTime()) || 
+                        sproutedDate.getFullYear() !== year ||
+                        sproutedDate.getMonth() !== month ||
+                        sproutedDate.getDate() !== day) {
+                        new Notice(`Invalid or ambiguous date encountered: ${dateString} in "${fullMatch}"`);
+                        continue; 
                     }
 
-                    // Get the line number of the code block
-                    const lineNumber = sectionInfo.lineStart;
-                    const position = { line: lineNumber + 2, ch: 0 };
-                    view.editor.replaceRange(timestamp + '\n', position);
+                    const utcCurrent = Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+                    const utcSprouted = Date.UTC(sproutedDate.getFullYear(), sproutedDate.getMonth(), sproutedDate.getDate());
+
+                    const diffTime = Math.abs(utcCurrent - utcSprouted);
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+                    const replacementString = `${fullMatch} Day#${diffDays}`;
                     
-                    // Save the file
-                    await this.app.vault.modify(view.file, view.editor.getValue());
-
-                } catch (error) {
-                    console.error("Error in QuickTimestamper:", error);
+                    parts.push(content.substring(lastIndex, match.index));
+                    parts.push(replacementString);
+                    lastIndex = match.index + fullMatch.length;
+                    changesMade = true;
                 }
-            });
+                
+                parts.push(content.substring(lastIndex));
+                const newContent = parts.join('');
+
+                if (changesMade) {
+                    if (newContent !== content) { 
+                        editor.setValue(newContent);
+                        new Notice('Sprouted dates updated with day numbers.');
+                    } else {
+                        new Notice('No effective changes to Sprouted dates, though matches were found.');
+                    }
+                } else {
+                    new Notice('No "Sprouted: {date}" found or all are already updated.');
+                }
+            }
         });
+    }
+
+    onunload() {
+        console.log('QuickDateFrom plugin unloaded');
     }
 }
