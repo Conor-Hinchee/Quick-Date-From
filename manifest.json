@@ -1,0 +1,10 @@
+{
+	"id": "quick-date-from",
+	"name": "Quick Date From",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "Quickly insert or manipulate dates from selected text",
+	"author": "Conor Hinchee",
+	"authorUrl": "https://conorhinchee.com",
+	"isDesktopOnly": false
+}
