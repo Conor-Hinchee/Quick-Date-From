@@ -1,0 +1,1 @@
+hey gemini new script here buddy > love you <3
