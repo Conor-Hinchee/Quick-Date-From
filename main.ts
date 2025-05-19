@@ -51,7 +51,7 @@ export default class QuickDateFrom extends Plugin {
                     const diffTime = Math.abs(utcCurrent - utcSprouted); // Calculate absolute difference in time
                     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-                    plantStatsEntries.push({ lineText: fullLineText, days: diffDays });
+                    plantStatsEntries.push({ lineText: fullLineText, days: diffDays, sproutedDateObject: sproutedDate });
                 }
                 
                 if (plantStatsEntries.length === 0) {
@@ -65,27 +65,26 @@ export default class QuickDateFrom extends Plugin {
                 const now = new Date();
                 const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
-                // Calculate week information
-                const currentDay = now.getDay(); // 0 (Sun) - 6 (Sat)
-                const firstDayOfWeek = new Date(now);
-                firstDayOfWeek.setDate(now.getDate() - currentDay); // Set to Sunday of the current week
+                // Determine the maximum sprouted days
+                const maxSproutedDays = plantStatsEntries.length > 0 ? Math.max(...plantStatsEntries.map(entry => entry.days)) : 0;
 
-                const lastDayOfWeek = new Date(firstDayOfWeek);
-                lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6); // Set to Saturday of the current week
+                // Calculate plant's age in weeks. Day 0-6 = Week 1, Day 7-13 = Week 2, etc.
+                // This applies if maxSproutedDays is 0 (no plants or sprouted today).
+                const plantAgeInWeeks = Math.floor(maxSproutedDays / 7) + 1;
 
-                const yearStart = new Date(now.getFullYear(), 0, 1);
-                const daysSinceYearStart = Math.floor((now.getTime() - yearStart.getTime()) / (24 * 60 * 60 * 1000));
-                // Adjust week number calculation to ensure day 1 of year is in week 1
-                const weekNumber = Math.ceil((daysSinceYearStart + yearStart.getDay() + 1 - (yearStart.getDay() === 0 ? 0 : yearStart.getDay())) / 7);
+                // Calculate current calendar week's start and end dates (based on 'now')
+                const currentDayOfWeek = now.getDay(); // 0 (Sun) - 6 (Sat)
+                const firstDayOfCurrentWeek = new Date(now);
+                firstDayOfCurrentWeek.setDate(now.getDate() - currentDayOfWeek); // Set to Sunday of the current week
+
+                const lastDayOfCurrentWeek = new Date(firstDayOfCurrentWeek);
+                lastDayOfCurrentWeek.setDate(firstDayOfCurrentWeek.getDate() + 6); // Set to Saturday of the current week
                 
                 const formatDate = (date: Date) => {
                     return `${date.getMonth() + 1}/${date.getDate()}/${String(date.getFullYear()).slice(-2)}`;
                 };
 
-                // Determine the maximum sprouted days
-                const maxSproutedDays = plantStatsEntries.length > 0 ? Math.max(...plantStatsEntries.map(entry => entry.days)) : 0;
-
-                const dayAndWeekInfoString = `Day ${maxSproutedDays} Week: #${weekNumber} (${formatDate(firstDayOfWeek)} - ${formatDate(lastDayOfWeek)})`;
+                const dayAndWeekInfoString = `Day ${maxSproutedDays} Week: #${plantAgeInWeeks} (${formatDate(firstDayOfCurrentWeek)} - ${formatDate(lastDayOfCurrentWeek)})`;
 
                 // Construct the new stats block content
                 const statsHeader = "## Plant Stats";
